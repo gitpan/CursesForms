@@ -2,10 +2,9 @@
 #
 # test.pl -- Curses::Forms test script
 #
-# (c) 2001, Arthur Corliss <corliss@gallanttech.com>,
-#		Gallant Technologies, Inc.
+# (c) 2001, Arthur Corliss <corliss@digitalmages.com>
 #
-# $Id: test.pl,v 0.3 2002/11/04 01:04:57 corliss Exp corliss $
+# $Id: test.pl,v 0.4 2002/11/14 18:26:22 corliss Exp corliss $
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -37,7 +36,7 @@ use vars qw($VERSION);
 #
 #####################################################################
 
-($VERSION) = (q$Revision: 0.3 $ =~ /(\d+(?:\.(\d+))+)/) || '0.1';
+($VERSION) = (q$Revision: 0.4 $ =~ /(\d+(?:\.(\d+))+)/) || '0.1';
 
 my $mwh = new Curses;
 my %widgets = (
@@ -106,6 +105,8 @@ halfdelay(5);
 $mwh->keypad(1);
 curs_set(0);
 
+pushwh($mwh);
+
 $form->execute($mwh);
 $form2->execute($mwh);
 
@@ -126,6 +127,8 @@ dialog('Return Value', BTN_OK, "You type '$message', and hit button $rv!",
   qw(white green yellow));
 
 logon('System Logon', BTN_OK | BTN_CANCEL, 20, qw(black yellow red));
+
+popwh();
 
 exit 0;
 

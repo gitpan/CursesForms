@@ -2,7 +2,7 @@
 #
 # (c) 2001, Arthur Corliss <corliss@digitalmages.com>
 #
-# $Id: Dialog.pm,v 0.3 2002/11/04 01:06:05 corliss Exp corliss $
+# $Id: Dialog.pm,v 0.4 2002/11/14 19:09:08 corliss Exp corliss $
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ Curses::Forms::Dialog - Curses Forms Dialog
 
 =head1 MODULE VERSION
 
-$Id: Dialog.pm,v 0.3 2002/11/04 01:06:05 corliss Exp corliss $
+$Id: Dialog.pm,v 0.4 2002/11/14 19:09:08 corliss Exp corliss $
 
 =head1 SYNOPSIS
 
@@ -62,7 +62,7 @@ use Curses::Forms;
 use Exporter;
 use Carp;
 
-$VERSION = (q$Revision: 0.3 $ =~ /(\d+(?:\.(\d+))+)/)[0] || '0.1';
+$VERSION = (q$Revision: 0.4 $ =~ /(\d+(?:\.(\d+))+)/)[0] || '0.1';
 @ISA = qw(Curses::Forms);
 @EXPORT = qw(dialog BTN_OK BTN_CANCEL BTN_YES BTN_NO BTN_HELP);
 
@@ -202,7 +202,11 @@ sub dialog {
 
 =head1 HISTORY
 
+=over
+
 =item 2002/10/10 -- Rewritten in OO form.
+
+=back
 
 =head1 AUTHOR/COPYRIGHT
 

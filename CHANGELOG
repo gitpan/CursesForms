@@ -1,4 +1,11 @@
 ----------------------------
+revision 1.997  locked by: corliss;
+date: 2002/11/14 18:22:59;  author: corliss;  state: Exp;  lines: +124 -6
+--Added window management array and functions
+--POD updates
+--Form windows are now set to syncok
+--Subforms now return focus to parent form after last widget
+----------------------------
 revision 1.996  locked by: corliss;
 date: 2002/11/04 01:01:46;  author: corliss;  state: Exp;  lines: +293 -105
 --Added subform support

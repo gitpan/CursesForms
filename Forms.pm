@@ -2,7 +2,7 @@
 #
 # (c) 2001, Arthur Corliss <corliss@digitalmages.com>
 #
-# $Id: Forms.pm,v 1.996 2002/11/04 01:01:46 corliss Exp corliss $
+# $Id: Forms.pm,v 1.997 2002/11/14 18:22:59 corliss Exp corliss $
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ Curses::Forms - Curses Forms Framework
 
 =head1 MODULE VERSION
 
-$Id: Forms.pm,v 1.996 2002/11/04 01:01:46 corliss Exp corliss $
+$Id: Forms.pm,v 1.997 2002/11/14 18:22:59 corliss Exp corliss $
 
 =head1 SYNOPSIS
 
@@ -94,6 +94,12 @@ $Id: Forms.pm,v 1.996 2002/11/04 01:01:46 corliss Exp corliss $
 
   $form->execute($mwh);
 
+  pushwh($mwh);
+  popwh();
+  refreshwh();
+  lowerwh($wh);
+  raisewh($wh);
+
 =head1 REQUIREMENTS
 
 Curses
@@ -123,9 +129,10 @@ use Curses::Widgets 1.9;
 use Exporter;
 use Carp;
 
-$VERSION = (q$Revision: 1.996 $ =~ /(\d+(?:\.(\d+))+)/)[0] || '0.1';
+$VERSION = (q$Revision: 1.997 $ =~ /(\d+(?:\.(\d+))+)/)[0] || '0.1';
 @ISA = qw(Curses::Widgets);
-@EXPORT = qw(select_colour select_color scankey textwrap);
+@EXPORT = qw(select_colour select_color scankey textwrap pushwh 
+  popwh refreshwh lowerwh raisewh);
 
 my @events = qw(OnEnter OnExit);
 my @colitems = qw(FOREGROUND BACKGROUND BORDERCOL CAPTIONCOL);
@@ -246,13 +253,113 @@ B<addSubform> method.  Like the widgets implementation, subforms can be custom
 derivatives of Curses::Forms, all you need to do is declare the alternate
 Forms namespace(s) to search via the B<ALTFBASE> key.
 
-Finally, subforms support the B<OnEnter> and B<OnExit> event routines as well.
+The only change in subform behaviour versus form behaviour is that once the
+focus leaves the last widget in the tab order, focus switches back to the
+parent form tab order, instead of looping within that subform.
+
+=head2 MANAGING OVERLAPPING FORMS
+
+Every time a non-derived form is displayed Curses::Forms pushes the active
+window handle onto an internal ordinal array.  This array is used each time a
+window is released to refresh each window from the bottom up to make sure all
+the regions overlapped by the now-deleted form are redrawn.  This is done by
+calling touchwin and noutrefresh on each window handle, and then a single
+doupdate at the end.  The deleted form's window handle is popped off the array
+just prior to this refresh.
+
+From time to time you may create windows that need to be redrawn with the
+other overlapping windows.  Two functions are provided to handle this:  
+B<pushwh> and B<popwh>.  As you create the window you should use pushwh to put
+it in the array, and use popwh as soon as you delete it.  If you'd like to
+manually refresh the screen, you may do so via the B<refreshwh> subroutine.
+
+To other functions are provided for lowering or raising the windows in the
+array:  B<lowerwh> and B<raisewh>.
 
 =head1 FUNCTIONS
 
 Using this module will import the same set of functions provided by
 Curses::Widgets.  Please consult the Curses::Widgets pod for a complete
 reference of these functions.
+
+New functions provided by this module are documented below.
+
+=cut
+
+{
+  my @wh;
+
+  sub pushwh {
+    push(@wh, shift @_);
+  }
+
+  sub popwh {
+    pop @wh;
+  }
+
+  sub refreshwh {
+    foreach (@wh) {
+      next unless defined $_;
+      $_->touchwin;
+      $_->noutrefresh;
+    }
+    doupdate();
+  }
+
+  sub lowerwh {
+    my $pwh = shift;
+    my $i;
+
+    for ($i = 0; $i < @wh; $i++) {
+      if ($wh[$i] == $pwh) {
+        @wh[$i - 1, $i] = @wh[$i, $i - 1] if ($i > 0);
+        last;
+      }
+    }
+  }
+
+  sub raisewh {
+    my $pwh = shift;
+    my $i;
+
+    for ($i = 0; $i < @wh; $i++) {
+      if ($wh[$i] == $pwh) {
+        @wh[$i, $i + 1] = @wh[$i + 1, $i] if ($i < $#wh);
+        last;
+      }
+    }
+  }
+}
+
+=head2 pushwh
+
+  pushwh($mwh);
+
+Pushes an external window handle onto the Curses::Forms-managed refresh array.
+
+=head2 popwh
+
+  popwh();
+
+Pops a window handle off the Curses::Forms-managed refresh array.
+
+=head2 refreshwh
+
+  refreshwh();
+
+Refreshes each window in order of the ordinal array.
+
+=head2 raisewh
+
+  raisewh($wh);
+
+Raises the passed window in the array.
+
+=head2 lowerwh
+
+  lowerwh($wh);
+
+Lowers the passed window in the array.
 
 =head1 METHODS
 
@@ -362,6 +469,7 @@ sub _conf {
     EXIT        => 0,
     DONTSWITCH  => 0,
     DESTROY     => 1,
+    SUBFORM     => 0,
     @_
     );
 	my @required = qw(COLUMNS LINES);
@@ -392,6 +500,7 @@ sub _conf {
   foreach (keys %{$conf{SUBFORMS}}) {
     $subform = $conf{SUBFORMS}{$_};
     $$subform{INPUTFUNC} = $conf{INPUTFUNC};
+    $$subform{SUBFORM} = 1;
     unless ($self->addSubform($_, $subform)) { $err = 1 };
   }
 
@@ -472,7 +581,9 @@ sub _formwin {
       carp ref($self), ":  Window creation failed, possible geometry problem";
       return 0;
     }
+    $fwh->syncok(1);
     $self->_init($fwh);
+    pushwh($fwh);
   }
 
   # Store the handles
@@ -486,6 +597,8 @@ sub _relwin {
   my $fwh = $self->{FWH};
 
   $fwh->delwin if defined $fwh;
+  popwh();
+  refreshwh();
 
   $self->{FWH} = undef;
 }
@@ -800,8 +913,9 @@ sub execute {
   }
   $i = 0 if $i > $#taborder;
 
-  $self->_init($mwh);
+  $self->{MWH} = $mwh;
   $dwh = $self->_canvas($mwh, $self->_geometry);
+  $self->_init($dwh);
   $cwh = $self->_canvas($dwh, $self->_cgeometry);
   $cwh->keypad(1);
 
@@ -840,6 +954,9 @@ sub execute {
     $$conf{DONTSWITCH} = 0;
     $i = 0 if $i > $#taborder;
     $i = $#taborder if $i < 0;
+
+    # Exit if this is the last widget on a subform
+    last if ($$conf{SUBFORM} && $focused eq $taborder[$#taborder]);
   }
 
   $cwh->delwin;
@@ -847,6 +964,7 @@ sub execute {
 
   # Reset the EXIT and DESTROY flags
   $$conf{EXIT} = 0;
+  $$conf{FOCUSED} = $taborder[$i];
 
   return $key;
 }
